@@ -172,6 +172,16 @@ export class ExecutionsService {
         return this.execRepo.findOneOrFail({ where: { id: saved.id } });
     }
 
+    async listExecutions(endpointId: string, limit: number, scheduleId?: string) {
+        const where: any = { endpointId };
+        if (scheduleId) where.scheduleId = scheduleId;
+        return this.execRepo.find({
+            where,
+            order: { createdAt: 'DESC' },
+            take: limit,
+        });
+    }
+
     private resolveParameters(
         params: EndpointParameter[],
         overrides: Record<string, any>,

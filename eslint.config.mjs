@@ -4,9 +4,15 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+// Ignoramos carpeta frontend para evitar que las reglas backend afecten React.
+// Si se desea lint específico, se puede añadir un eslint separado dentro de frontend.
 export default tseslint.config(
   {
-    ignores: ['eslint.config.mjs'],
+    ignores: [
+      'eslint.config.mjs',
+      'frontend/**',
+      'dist/**',
+    ],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -20,7 +26,7 @@ export default tseslint.config(
       sourceType: 'commonjs',
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: new URL('.', import.meta.url).pathname,
       },
     },
   },
@@ -29,7 +35,7 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+      'prettier/prettier': ['error', { endOfLine: 'auto' }],
     },
   },
 );
