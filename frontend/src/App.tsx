@@ -34,6 +34,7 @@ export default function App() {
   const [paramValues, setParamValues] = useState<Record<string, string>>({});
   const [paramCreating, setParamCreating] = useState(false);
   const [scheduleCreating, setScheduleCreating] = useState(false);
+  const [newScheduleType, setNewScheduleType] = useState<'CRON' | 'INTERVAL' | 'ONCE'>('CRON');
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const errorTimerRef = useRef<number | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -351,9 +352,12 @@ VITE_API_KEY=TU_API_KEY</pre></li>
                       showError(`eliminar endpoint: ${e.message}`);
                     }
                   }}
-                  style={{ background: '#ffe5e5', border: '1px solid #ffcccc', padding: '0.15rem 0.4rem', cursor: 'pointer' }}
+                  style={{ background: '#ffe5e5', border: '1px solid #ffcccc', padding: '0.15rem 0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
                   title="Eliminar endpoint"
-                >X</button>
+                  aria-label={`Eliminar endpoint ${ep.name}`}
+                >
+                  <i className="fas fa-trash" aria-hidden="true" style={{ fontSize: '1rem', color: '#b30000' }}></i>
+                </button>
               </li>
             ))}
           </ul>
@@ -459,7 +463,14 @@ VITE_API_KEY=TU_API_KEY</pre></li>
                   {parameters.map(p => (
                     <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                       <span>{p.location}.{p.name} ({p.dataType}) {p.required ? 'required' : ''}</span>
-                      <button onClick={() => handleDeleteParameter(p.id)}>X</button>
+                      <button
+                        onClick={() => handleDeleteParameter(p.id)}
+                        style={{ background: '#ffe5e5', border: '1px solid #ffcccc', padding: '0.15rem 0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                        title={`Eliminar parámetro ${p.name}`}
+                        aria-label={`Eliminar parámetro ${p.name}`}
+                      >
+                        <i className="fas fa-trash" aria-hidden="true" style={{ fontSize: '1rem', color: '#b30000' }}></i>
+                      </button>
                     </li>
                   ))}
                 </ul>
@@ -467,18 +478,64 @@ VITE_API_KEY=TU_API_KEY</pre></li>
               {/* Schedules */}
               <div>
                 <h3 style={{ margin: '0 0 0.5rem' }}>Schedules</h3>
-                <form onSubmit={handleCreateSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <select name="type" defaultValue="CRON" required>
-                    <option>CRON</option><option>INTERVAL</option><option>ONCE</option>
-                  </select>
-                  <input name="cronExpression" placeholder="*/5 * * * *" />
-                  <input name="intervalMs" placeholder="60000" />
-                  <button type="submit" disabled={scheduleCreating}>{scheduleCreating ? 'Creando...' : 'Crear'}</button>
+                <form onSubmit={handleCreateSchedule} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background:'#f8fafd', border:'1px solid #e0e0e0', borderRadius:4, padding:'0.5rem' }}>
+                  <label style={{ fontSize:'0.75rem', display:'flex', flexDirection:'column', gap:4 }}>
+                    Tipo de programación
+                    <select
+                      name="type"
+                      value={newScheduleType}
+                      onChange={e => setNewScheduleType(e.target.value as any)}
+                      required
+                      style={{ padding:'0.25rem' }}
+                    >
+                      <option value="CRON">CRON (patrón avanzado)</option>
+                      <option value="INTERVAL">INTERVAL (cada X ms)</option>
+                      <option value="ONCE">ONCE (una sola vez)</option>
+                    </select>
+                  </label>
+                  {newScheduleType === 'CRON' && (
+                    <label style={{ fontSize:'0.75rem', display:'flex', flexDirection:'column', gap:4 }}>
+                      Expresión CRON (min hora díaMes mes díaSemana)
+                      <input
+                        name="cronExpression"
+                        placeholder="*/5 * * * *"
+                        required={newScheduleType === 'CRON'}
+                        style={{ padding:'0.25rem', fontSize:'0.8rem' }}
+                      />
+                      <span style={{ fontSize:'0.65rem', color:'#555' }}>Ejemplos: "*/5 * * * *" (cada 5 min), "0 3 * * *" (diario 03:00)</span>
+                    </label>
+                  )}
+                  {newScheduleType === 'INTERVAL' && (
+                    <label style={{ fontSize:'0.75rem', display:'flex', flexDirection:'column', gap:4 }}>
+                      Intervalo en milisegundos
+                      <input
+                        name="intervalMs"
+                        type="number"
+                        min={1000}
+                        placeholder="60000"
+                        required={newScheduleType === 'INTERVAL'}
+                        style={{ padding:'0.25rem', fontSize:'0.8rem' }}
+                      />
+                      <span style={{ fontSize:'0.65rem', color:'#555' }}>Ejemplo: 60000 = 1 minuto. Usa valores razonables para no saturar.</span>
+                    </label>
+                  )}
+                  {newScheduleType === 'ONCE' && (
+                    <div style={{ fontSize:'0.7rem', color:'#555' }}>Se programará una sola ejecución. (El backend calculará la próxima fecha si se provee lógica adicional).</div>
+                  )}
+                  <button type="submit" disabled={scheduleCreating} style={{ marginTop:'0.25rem' }}>{scheduleCreating ? 'Creando...' : 'Crear schedule'}</button>
                 </form>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                   {schedules.map(s => (
                     <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>{s.type} next: {new Date(s.nextRunAt).toLocaleString()} {s.enabled ? '' : '(off)'}</span>
+                      <span>
+                        <strong>{s.type}</strong> · Próxima: {new Date(s.nextRunAt).toLocaleString()} {s.enabled ? '' : '(off)'}
+                        {s.type === 'CRON' && s.cronExpression && (
+                          <span style={{ color:'#666', marginLeft:4 }}>cron: {s.cronExpression}</span>
+                        )}
+                        {s.type === 'INTERVAL' && s.intervalMs != null && (
+                          <span style={{ color:'#666', marginLeft:4 }}>interval: {s.intervalMs} ms</span>
+                        )}
+                      </span>
                       <button onClick={() => handleDeleteSchedule(s.id)}>X</button>
                     </li>
                   ))}
